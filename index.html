@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ניתוח פרויקט משפחת לוין - תל מונד</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    direction: rtl;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+    padding: 30px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; }
+  .header .subtitle { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+  .header .meta { text-align: left; font-size: 13px; opacity: 0.8; }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    padding: 24px 40px 0;
+  }
+  .kpi-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-top: 4px solid #0f3460;
+  }
+  .kpi-card.green { border-top-color: #27ae60; }
+  .kpi-card.orange { border-top-color: #e67e22; }
+  .kpi-card.red { border-top-color: #e74c3c; }
+  .kpi-card.blue { border-top-color: #3498db; }
+  .kpi-card.purple { border-top-color: #9b59b6; }
+  .kpi-label { font-size: 12px; color: #666; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 26px; font-weight: 800; color: #1a1a2e; }
+  .kpi-sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .charts-grid {
+    padding: 24px 40px;
+    display: grid;
+    gap: 24px;
+  }
+  .chart-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .chart-card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f2f5;
+  }
+  .chart-card .chart-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+    margin-top: -8px;
+  }
+  .chart-wrapper {
+    position: relative;
+    height: 350px;
+  }
+  .chart-wrapper.tall { height: 450px; }
+  .chart-wrapper.short { height: 280px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+  /* Tables */
+  .analysis-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .analysis-table th {
+    background: #f8f9fa;
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 600;
+    color: #444;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  .analysis-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+  }
+  .analysis-table tr:hover td { background: #fafafa; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-red { background: #fdecea; color: #c62828; }
+  .badge-orange { background: #fff3e0; color: #e65100; }
+  .badge-green { background: #e8f5e9; color: #2e7d32; }
+  .badge-gray { background: #f5f5f5; color: #757575; }
+  .badge-blue { background: #e3f2fd; color: #1565c0; }
+
+  .alert-box {
+    background: #fdecea;
+    border-right: 4px solid #e74c3c;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #c62828;
+  }
+  .info-box {
+    background: #e3f2fd;
+    border-right: 4px solid #1565c0;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #1565c0;
+  }
+  .warn-box {
+    background: #fff8e1;
+    border-right: 4px solid #f9a825;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #e65100;
+  }
+  .progress-bar-wrap { background: #f0f0f0; border-radius: 4px; height: 8px; }
+  .progress-bar-fill { height: 8px; border-radius: 4px; transition: width 0.3s; }
+  .section-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1a1a2e;
+    padding: 8px 40px 0;
+    border-right: 5px solid #0f3460;
+    margin: 8px 40px 0;
+  }
+  .findings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .finding-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+  .finding-icon { font-size: 22px; flex-shrink: 0; }
+  .finding-text { font-size: 13px; line-height: 1.6; }
+  .finding-text strong { display: block; margin-bottom: 2px; font-size: 14px; }
+
+  footer {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+    font-size: 12px;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📊 ניתוח פרויקט - משפחת לוין</h1>
+    <div class="subtitle">תל מונד | יער להב 35 | חשבון ראשי</div>
+  </div>
+  <div class="meta">
+    <div>ערך חוזה: ₪7,250,000</div>
+    <div>תקציב הוצאות: ₪6,387,447</div>
+    <div>נכון ל: מרץ 2026</div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card blue">
+    <div class="kpi-label">הוצאות בפועל</div>
+    <div class="kpi-value">₪4,373K</div>
+    <div class="kpi-sub">68% מהתקציב</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">הכנסות שנגבו</div>
+    <div class="kpi-value">₪4,724K</div>
+    <div class="kpi-sub">65% מערך החוזה</div>
+  </div>
+  <div class="kpi-card purple">
+    <div class="kpi-label">יתרת תקציב</div>
+    <div class="kpi-value">₪2,015K</div>
+    <div class="kpi-sub">32% עדיין זמין</div>
+  </div>
+  <div class="kpi-card orange">
+    <div class="kpi-label">תזרים מזומנים</div>
+    <div class="kpi-value">+₪351K</div>
+    <div class="kpi-sub">הכנסות עולות על הוצאות</div>
+  </div>
+  <div class="kpi-card red">
+    <div class="kpi-label">חריגות מצטברות</div>
+    <div class="kpi-value">₪393K</div>
+    <div class="kpi-sub">8 משאבים חרגו מתקציב</div>
+  </div>
+</div>
+
+<div class="charts-grid">
+
+<!-- Chart 1: Monthly Expenses Distribution -->
+<div class="chart-card">
+  <h2>📈 גרף 1 — התפלגות הוצאות לאורך זמן</h2>
+  <div class="chart-subtitle">הוצאות חודשיות (עמודות) ומצטבר (קו) | נובמבר 2024 – מרץ 2026</div>
+  <div class="chart-wrapper tall">
+    <canvas id="chart1"></canvas>
+  </div>
+</div>
+
+<!-- Chart 2: Stacked by Resource Group -->
+<div class="chart-card">
+  <h2>🏗️ גרף 2 — התפלגות הוצאות לפי משאבים לאורך זמן</h2>
+  <div class="chart-subtitle">הוצאות חודשיות לפי קבוצות משאב | הקו האדום מסמן את גבול התקציב הכולל (6,387,447 ₪)</div>
+  <div class="chart-wrapper tall">
+    <canvas id="chart2"></canvas>
+  </div>
+</div>
+
+<!-- Chart 3: Budget vs Actual - Overruns -->
+<div class="chart-card">
+  <h2>⚠️ גרף 3 — תקציב מול בפועל לפי משאבים (חריגות ויתרות)</h2>
+  <div class="chart-subtitle">כל עמודה שחורגת מהתקציב מסומנת באדום | מסודר לפי אחוז חריגה</div>
+  <div class="chart-wrapper" style="height:520px;">
+    <canvas id="chart3"></canvas>
+  </div>
+</div>
+
+<!-- Chart 4: Overrun Table -->
+<div class="chart-card">
+  <h2>🚨 גרף 4 — ניתוח חריגות ויתרות תקציביות</h2>
+  <div class="chart-subtitle">משאבים שחרגו מהתקציב (אדום) לעומת משאבים עם יתרה (ירוק) | הגדול ביותר קודם</div>
+  <div class="chart-wrapper" style="height:420px;">
+    <canvas id="chart4"></canvas>
+  </div>
+</div>
+
+<!-- Detailed Overrun Table -->
+<div class="chart-card">
+  <h2>📋 ניתוח מפורט — חריגות ויתרות לפי משאב</h2>
+  <div class="chart-subtitle">חישוב הפרש בין תקציב לבפועל לכל משאב</div>
+
+  <div class="alert-box">
+    🚨 <strong>אזהרה קריטית:</strong> עבודות גבס (22001) חרגו ב-<strong>1,480%</strong> מהתקציב — תקציב: ₪16,000 | בפועל: ₪236,878 | חריגה: ₪220,878!
+  </div>
+  <div class="warn-box">
+    ⚠️ קיימות עבודות שטרם התחילו עם תקציב גבוה: מעקות (₪168,700), אלומיניום (₪537,000), מעלון (₪115,000), חשמל (₪280,000).
+  </div>
+
+  <table class="analysis-table" id="overrun-table">
+    <thead>
+      <tr>
+        <th>משאב</th>
+        <th>תיאור</th>
+        <th>תקציב (₪)</th>
+        <th>בפועל (₪)</th>
+        <th>הפרש (₪)</th>
+        <th>% ניצול</th>
+        <th>סטטוס</th>
+      </tr>
+    </thead>
+    <tbody id="overrun-tbody"></tbody>
+  </table>
+</div>
+
+<!-- Chart 5: Cashflow Analysis -->
+<div class="two-col">
+  <div class="chart-card">
+    <h2>💰 גרף 5 — ניתוח תזרים מזומנים</h2>
+    <div class="chart-subtitle">הכנסות שנגבו מול הוצאות מצטברות</div>
+    <div class="chart-wrapper">
+      <canvas id="chart5"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 6: Expense Distribution Pie -->
+  <div class="chart-card">
+    <h2>🥧 גרף 6 — התפלגות הוצאות לפי קטגוריות</h2>
+    <div class="chart-subtitle">חלוקת ההוצאות בפועל לפי קבוצות עבודה</div>
+    <div class="chart-wrapper">
+      <canvas id="chart6"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Chart 7: Works not started -->
+<div class="chart-card">
+  <h2>⏳ גרף 7 — עבודות שטרם התחילו / בשלב מוקדם</h2>
+  <div class="chart-subtitle">משאבים עם ניצול תקציבי נמוך מ-20% שעשויים לגרום לחריגות עתידיות</div>
+  <div class="chart-wrapper" style="height:360px;">
+    <canvas id="chart7"></canvas>
+  </div>
+</div>
+
+<!-- Executive Summary -->
+<div class="chart-card">
+  <h2>📝 סיכום מנהלים — ממצאים עיקריים</h2>
+
+  <div class="findings-grid">
+    <div class="finding-item">
+      <div class="finding-icon">✅</div>
+      <div class="finding-text">
+        <strong>מצב כללי — סביר</strong>
+        הפרויקט בוצע 68% מהתקציב הכולל. תזרים המזומנים חיובי — הכנסות (₪4,724K) עולות על הוצאות (₪4,373K) בכ-₪351K.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">🚨</div>
+      <div class="finding-text">
+        <strong>חריגה קריטית — גבס (22001)</strong>
+        תקציב של ₪16,000 הפך לביצוע של ₪236,878. חריגה של 1,480%. יש לבדוק מדוע הפריט הזה לא תומחר כראוי מראש.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">⚡</div>
+      <div class="finding-text">
+        <strong>שיא ביצוע — יולי–אוגוסט 2025</strong>
+        חודשי השיא בהוצאות היו יולי (₪661K) ואוגוסט (₪573K) — בעיקר שלד ובטון. העלויות האמצעיות לחודש: ₪257K.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">⚠️</div>
+      <div class="finding-text">
+        <strong>סיכון — עבודות גדולות טרם התחילו</strong>
+        מעקות (₪168K), מעלון (₪115K), אלומיניום (₪537K), חשמל (₪280K) — סה"כ ~₪1.1M שטרם נוצל. יש לוודא שהתקציב מספיק.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">📉</div>
+      <div class="finding-text">
+        <strong>ירידה חדה בביצוע — מרץ 2026</strong>
+        מרץ 2026 הציג רק ₪26,900 בהוצאות — נמוך מאוד. ייתכן שחלק מהחשבוניות טרם הוגשו.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">💡</div>
+      <div class="finding-text">
+        <strong>תקציב בצ"מ — ניצול חלקי</strong>
+        תקציב בצ"מ (סעיף 99001): ₪311,294. בוצע: ₪135,029 (43%). יתרה של ~₪176K עשויה לשמש לכיסוי חריגות עתידיות.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">🔧</div>
+      <div class="finding-text">
+        <strong>כלונסאות (23) — חריגה כפולה</strong>
+        קבלן קידוח (23001) חרג ב-225%, בטון (23002) ב-149%. יחד עם זאת, חומרי עזר (23004) ניצלו רק 40% — מה שמפחית את הנזק.
+      </div>
+    </div>
+    <div class="finding-item">
+      <div class="finding-icon">📊</div>
+      <div class="finding-text">
+        <strong>מצב פרויקט — 17 חודשים</strong>
+        הפרויקט פעיל 17 חודשים (11/2024–3/2026). עם ₪2M יתרת תקציב ועבודות גדולות שנותרו, צפויים עוד 6–9 חודשי עבודה.
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end charts-grid -->
+
+<footer>
+  דוח נוצר אוטומטית על בסיס נתוני Excel | פרויקט משפחת לוין — תל מונד | לוטוס
+</footer>
+
+<script>
+var PERIODS = ["2024-11","2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"];
+var MONTHLY_AMOUNTS = [13196,39869,317600,410597,113292,350696,78626,238893,661146,573258,248767,132970,352504,425335,184162,204878,26900];
+var CUMULATIVE = [13196,53065,370665,781262,894554,1245250,1323876,1562769,2223915,2797173,3045940,3178910,3531414,3956749,4140911,4345789,4372689];
+var STACKED = {"00": [11580,39854,56132,13775,20461,16814,9382,16945,11031,7245,9114,2871,6514,131034,450,19856,0],"01": [1000,0,26663,0,0,2500,0,0,0,0,0,0,0,0,0,0,0],"02": [0,0,143250,278282,79803,286143,28975,220448,576726,278199,630,0,0,0,0,0,0],"05": [0,0,0,49885,0,0,0,0,0,0,0,1359,25950,0,0,116180,0],"06": [0,0,0,0,0,18700,37950,700,0,8475,0,0,0,0,39648,0,0],"07": [0,0,0,29820,0,8946,0,0,72443,48620,8800,0,0,0,41486,0,0],"08": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,2900,0,0],"09": [0,0,0,0,0,0,0,0,0,69984,42860,19790,106886,2803,0,0,0],"10": [0,0,0,0,0,0,0,0,0,106661,23875,23866,48669,41491,32780,64020,26900],"11": [0,0,0,0,0,0,0,0,0,0,0,20153,42091,1635,15949,0,0],"12": [0,0,0,0,0,0,0,0,0,48820,0,0,19493,213669,0,0,0],"14": [0,0,0,0,0,0,0,0,0,0,20560,0,20360,7450,0,4822,0],"15": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"16": [0,0,0,0,0,0,0,0,0,4290,0,0,0,0,10520,0,0],"17": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"22": [0,0,0,0,0,0,0,0,0,164,107580,59607,39536,27253,2738,0,0],"23": [0,0,91555,34635,13028,3359,0,0,0,0,0,0,0,0,0,0,0],"40": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,10270,0,0],"99": [616,15,0,4200,0,14234,2319,800,946,800,35348,5324,43005,0,27421,0,0]};
+var BUDGET = [{"r":"01001","d":"עבודות עפר - חפירה + מילוי","b":30000,"a":30163},{"r":"23001","d":"קבלן קידוח","b":15673,"a":35335},{"r":"23002","d":"בטון","b":37162,"a":55420},{"r":"23003","d":"ברזל","b":27001,"a":25195},{"r":"23004","d":"חומרי עזר כולל צינור שרשורי לניקוז","b":43550,"a":17627},{"r":"23005","d":"כלי צמ\"ה","b":6400,"a":9000},{"r":"02001","d":"קבלן שלד","b":1324000,"a":1323618},{"r":"02003","d":"בטון","b":224771,"a":259237},{"r":"02004","d":"משאבות","b":49337,"a":33061},{"r":"02005","d":"ברזל","b":268881,"a":191043},{"r":"02007","d":"פוליביד","b":10625,"a":10587},{"r":"02008","d":"ציוד מתכלה לשלד","b":1000,"a":4270},{"r":"02009","d":"בלוקים","b":70000,"a":65519},{"r":"02010","d":"אדקס","b":1500,"a":5119},{"r":"05001","d":"כל עבודת איטום לרבות קבלן + חומרים","b":161844,"a":193374},{"r":"06001","d":"אביזרי ממד","b":54000,"a":37400},{"r":"06003","d":"פרגולות","b":113800,"a":59598},{"r":"06004","d":"מעקות","b":168700,"a":0},{"r":"06005","d":"דלתות פנים","b":36400,"a":8475},{"r":"06006","d":"דלתות כניסה","b":20000,"a":0},{"r":"06007","d":"ארונות רטובים","b":20000,"a":0},{"r":"07001","d":"קבלן אינסטלציה","b":320000,"a":198595},{"r":"07002","d":"קבלן דודי שמש","b":20000,"a":0},{"r":"07003","d":"כלים סניטרים","b":25920,"a":11520},{"r":"08001","d":"קבלן חשמל","b":280000,"a":2900},{"r":"09001","d":"כל עבודות טיח חוץ ופנים קבלן + חומר","b":400000,"a":242323},{"r":"10001","d":"קבלן שאיבה סומסום","b":45430,"a":38669},{"r":"10002","d":"חומרי מליטה","b":35856,"a":16904},{"r":"10003","d":"קבלן רצף","b":161352,"a":199075},{"r":"10004","d":"חומר ריצוף","b":134460,"a":113616},{"r":"11001","d":"כל עבודות צבע ושפכטל קבלן + חומר","b":120000,"a":79828},{"r":"12001","d":"סבכות מסתור מערכות","b":88400,"a":0},{"r":"12002","d":"HPL","b":141000,"a":19493},{"r":"12003","d":"פח אלומיניום","b":8800,"a":0},{"r":"12004","d":"קבלן אלומיניום","b":537000,"a":262490},{"r":"14001","d":"חומר - קופינג וספי חלונות","b":54822,"a":28662},{"r":"14002","d":"קבלן אבן","b":54616,"a":24530},{"r":"14003","d":"חומרי מליטה","b":5204,"a":0},{"r":"15001","d":"הכנות למיזוג אוויר","b":20000,"a":0},{"r":"16001","d":"גז לבישול","b":25000,"a":14810},{"r":"17001","d":"מעלון","b":115000,"a":0},{"r":"22001","d":"עבודות גבס - עבודה + חומר","b":16000,"a":236878},{"r":"40001","d":"עבודות פיתוח + פח מוטמן","b":70000,"a":10270},{"r":"00001","d":"הקמה ותחזוקת אתר","b":20700,"a":450},{"r":"00002","d":"גידור + שילוט אתר","b":8200,"a":11543},{"r":"00003","d":"צוות","b":382000,"a":204629},{"r":"00004","d":"פינוי פסולת","b":28500,"a":21100},{"r":"00005","d":"כלי עבודה","b":25500,"a":13684},{"r":"00006","d":"מנוף נייד","b":44250,"a":19500},{"r":"00007","d":"ציוד בטיחות","b":4000,"a":0},{"r":"00008","d":"מודד","b":25000,"a":6000},{"r":"00009","d":"ביטוח + עורך דין","b":60000,"a":38854},{"r":"00010","d":"בובקט + מיני כללי","b":52500,"a":20350},{"r":"00011","d":"מים + חשמל","b":12000,"a":0},{"r":"00012","d":"תיווך","b":50000,"a":36949},{"r":"99001","d":"בצמ","b":311294,"a":135029}];
+</script>
+<script>
+// ============================================================
+// DATA & HELPERS
+// ============================================================
+const fmt = n => new Intl.NumberFormat('he-IL').format(Math.round(n));
+const fmtK = n => '₪' + Math.round(n/1000) + 'K';
+
+const GROUP_LABELS = {
+  "00": "תקורות",
+  "01": "עבודות עפר",
+  "02": "שלד ובטון",
+  "23": "כלונסאות",
+  "05": "איטום",
+  "06": "מסגרות ונגרות",
+  "07": "אינסטלציה",
+  "08": "חשמל",
+  "09": "טיח",
+  "10": "ריצוף",
+  "11": "צבע",
+  "12": "אלומיניום",
+  "14": "אבן",
+  "15": "מיזוג",
+  "16": "גז",
+  "17": "מעלון",
+  "22": "גבס",
+  "40": "פיתוח",
+  "99": "בצמ"
+};
+
+const GROUP_COLORS = {
+  "00": "#95a5a6","01": "#e67e22","02": "#2980b9","23": "#1abc9c",
+  "05": "#9b59b6","06": "#e74c3c","07": "#f39c12","08": "#f1c40f",
+  "09": "#27ae60","10": "#3498db","11": "#e91e63","12": "#00bcd4",
+  "14": "#8d6e63","15": "#78909c","16": "#ff7043","17": "#ab47bc",
+  "22": "#d32f2f","40": "#66bb6a","99": "#607d8b"
+};
+
+const PERIOD_LABELS_HE = PERIODS.map(p => {
+  const [y, m] = p.split('-');
+  const months = ['','ינו','פבר','מרץ','אפר','מאי','יונ','יול','אוג','ספט','אוק','נוב','דצמ'];
+  return months[parseInt(m)] + "'" + y.slice(2);
+});
+
+// ============================================================
+// CHART 1 — Monthly + Cumulative
+// ============================================================
+(function() {
+  const ctx = document.getElementById('chart1').getContext('2d');
+  new Chart(ctx, {
+    data: {
+      labels: PERIOD_LABELS_HE,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'הוצאות חודשיות',
+          data: MONTHLY_AMOUNTS,
+          backgroundColor: MONTHLY_AMOUNTS.map(v => v > 500000 ? '#e74c3c' : v > 300000 ? '#e67e22' : '#3498db'),
+          yAxisID: 'y',
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'מצטבר',
+          data: CUMULATIVE,
+          borderColor: '#2c3e50',
+          backgroundColor: 'rgba(44,62,80,0.1)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          fill: false,
+          yAxisID: 'y2',
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ₪' + fmt(ctx.raw)
+          }
+        },
+        annotation: {
+          annotations: {
+            peak1: {
+              type: 'label', xValue: 6, yValue: 661146,
+              content: ['🔴 שיא', '₪661K'],
+              backgroundColor: 'rgba(231,76,60,0.9)', color: 'white',
+              font: { size: 11, weight: 'bold' }, padding: 6, borderRadius: 6, yAdjust: -30,
+              callout: { enabled: true }
+            }
+          }
+        }
+      },
+      scales: {
+        y: { position: 'right', title: { display: true, text: 'הוצאות חודשיות (₪)' },
+          ticks: { callback: v => fmtK(v) } },
+        y2: { position: 'left', title: { display: true, text: 'מצטבר (₪)' },
+          ticks: { callback: v => fmtK(v) },
+          grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 2 — Stacked by Resource Group with Budget Line
+// ============================================================
+(function() {
+  const ctx = document.getElementById('chart2').getContext('2d');
+  const keys = Object.keys(STACKED);
+  const datasets = keys.map(k => ({
+    type: 'bar',
+    label: GROUP_LABELS[k] || k,
+    data: STACKED[k],
+    backgroundColor: GROUP_COLORS[k] || '#aaa',
+    stack: 'a'
+  }));
+
+  // Add cumulative line
+  datasets.push({
+    type: 'line',
+    label: 'מצטבר',
+    data: CUMULATIVE,
+    borderColor: '#2c3e50',
+    borderWidth: 2.5,
+    pointRadius: 3,
+    fill: false,
+    stack: undefined,
+    yAxisID: 'y2'
+  });
+
+  new Chart(ctx, {
+    data: { labels: PERIOD_LABELS_HE, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ₪' + fmt(ctx.raw) } },
+        annotation: {
+          annotations: {
+            budgetLine: {
+              type: 'line', yMin: 6387447, yMax: 6387447,
+              borderColor: '#e74c3c', borderWidth: 2, borderDash: [8,4],
+              yScaleID: 'y2',
+              label: { display: true, content: 'גבול תקציב ₪6,387K', color: '#e74c3c',
+                backgroundColor: 'rgba(231,76,60,0.1)', font: { weight: 'bold', size: 11 }, position: 'start' }
+            }
+          }
+        }
+      },
+      scales: {
+        y: { stacked: true, position: 'right', ticks: { callback: v => fmtK(v) },
+          title: { display: true, text: 'הוצאות חודשיות (₪)' } },
+        y2: { position: 'left', ticks: { callback: v => fmtK(v) },
+          title: { display: true, text: 'מצטבר (₪)' },
+          grid: { drawOnChartArea: false }, max: 7000000 }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 3 — Budget vs Actual (overruns highlighted)
+// ============================================================
+(function() {
+  // Filter to meaningful items (budget > 5000 or actual > 5000)
+  const items = BUDGET.filter(b => b.b > 5000 || b.a > 5000)
+    .sort((a,b) => (b.a/Math.max(b.b,1)) - (a.a/Math.max(a.b,1)));
+
+  const labels = items.map(i => i.r + ' ' + (i.d.length > 18 ? i.d.substr(0,18)+'…' : i.d));
+  const budgets = items.map(i => i.b);
+  const actuals = items.map(i => i.a);
+  const overrun = items.map(i => i.a > i.b);
+
+  const ctx = document.getElementById('chart3').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'תקציב',
+          data: budgets,
+          backgroundColor: 'rgba(52,152,219,0.5)',
+          borderColor: '#2980b9',
+          borderWidth: 1.5
+        },
+        {
+          label: 'בפועל',
+          data: actuals,
+          backgroundColor: actuals.map((a,i) => overrun[i] ? 'rgba(231,76,60,0.8)' : 'rgba(39,174,96,0.8)'),
+          borderColor: actuals.map((a,i) => overrun[i] ? '#c0392b' : '#1e8449'),
+          borderWidth: 1.5
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const i = ctx.dataIndex;
+              const item = items[i];
+              const pct = item.b > 0 ? Math.round(item.a/item.b*100) : 0;
+              return ctx.dataset.label + ': ₪' + fmt(ctx.raw) + (ctx.datasetIndex===1 ? ' (' + pct + '%)' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { callback: v => fmtK(v) } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 4 — Variance (overrun/surplus)
+// ============================================================
+(function() {
+  const items = BUDGET.filter(b => b.b > 5000 || b.a > 5000);
+  const variances = items.map(i => i.a - i.b);
+
+  // Sort by variance (biggest overrun first)
+  const sorted = items.map((item, i) => ({ ...item, variance: variances[i] }))
+    .sort((a, b) => b.variance - a.variance);
+
+  // Take top 15 overruns + top 10 savings
+  const overruns = sorted.filter(x => x.variance > 0).slice(0, 10);
+  const savings = sorted.filter(x => x.variance < 0).sort((a,b) => a.variance - b.variance).slice(0, 8);
+  const display = [...overruns, ...savings];
+
+  const ctx = document.getElementById('chart4').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: display.map(i => i.r + ': ' + (i.d.length > 20 ? i.d.substr(0,20)+'…' : i.d)),
+      datasets: [{
+        label: 'הפרש מהתקציב (₪)',
+        data: display.map(i => i.variance),
+        backgroundColor: display.map(i => i.variance > 0 ? 'rgba(231,76,60,0.8)' : 'rgba(39,174,96,0.8)'),
+        borderColor: display.map(i => i.variance > 0 ? '#c0392b' : '#1e8449'),
+        borderWidth: 1.5
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const item = display[ctx.dataIndex];
+              const pct = item.b > 0 ? Math.round(item.a/item.b*100) : 0;
+              const sign = ctx.raw > 0 ? 'חריגה' : 'יתרה';
+              return sign + ': ₪' + fmt(Math.abs(ctx.raw)) + ' | ניצול: ' + pct + '%';
+            }
+          }
+        },
+        annotation: {
+          annotations: {
+            zero: { type: 'line', xMin: 0, xMax: 0, borderColor: '#333', borderWidth: 1.5 }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { callback: v => fmtK(v) } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 5 — Cashflow (Income vs Expenses cumulative)
+// ============================================================
+(function() {
+  const incomeData = [
+    { period: "2024-12", cumIncome: 217500 },
+    { period: "2025-01", cumIncome: 623573 },
+    { period: "2025-02", cumIncome: 1042063 },
+    { period: "2025-03", cumIncome: 1465701 },
+    { period: "2025-04", cumIncome: 1719938 },
+    { period: "2025-05", cumIncome: 2008074 },
+    { period: "2025-06", cumIncome: 2152989 },
+    { period: "2025-07", cumIncome: 2463159 },
+    { period: "2025-08", cumIncome: 2618407 },
+    { period: "2025-09", cumIncome: 3514482 },
+    { period: "2025-10", cumIncome: 3668017 },
+    { period: "2025-11", cumIncome: 4134119 },
+    { period: "2025-12", cumIncome: 4373035 },
+    { period: "2026-01", cumIncome: 4724495 }
+  ];
+
+  // Map income to our periods
+  const incomeMap = {};
+  incomeData.forEach(d => incomeMap[d.period] = d.cumIncome);
+  let lastIncome = 0;
+  const incomeByPeriod = PERIODS.map(p => {
+    if (incomeMap[p]) lastIncome = incomeMap[p];
+    return lastIncome;
+  });
+
+  const ctx = document.getElementById('chart5').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: PERIOD_LABELS_HE,
+      datasets: [
+        {
+          label: 'הכנסות מצטברות',
+          data: incomeByPeriod,
+          borderColor: '#27ae60',
+          backgroundColor: 'rgba(39,174,96,0.1)',
+          borderWidth: 2.5,
+          fill: true,
+          pointRadius: 4
+        },
+        {
+          label: 'הוצאות מצטברות',
+          data: CUMULATIVE,
+          borderColor: '#e74c3c',
+          backgroundColor: 'rgba(231,76,60,0.1)',
+          borderWidth: 2.5,
+          fill: true,
+          pointRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ₪' + fmt(ctx.raw) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => fmtK(v) } }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 6 — Pie by Resource Group
+// ============================================================
+(function() {
+  const groups = {};
+  BUDGET.forEach(b => {
+    const prefix = b.r.substring(0,2);
+    const groupName = GROUP_LABELS[prefix] || 'אחר';
+    groups[groupName] = (groups[groupName] || 0) + b.a;
+  });
+
+  const sorted = Object.entries(groups).filter(([,v]) => v > 5000)
+    .sort(([,a],[,b]) => b-a);
+
+  const ctx = document.getElementById('chart6').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(([k]) => k),
+      datasets: [{
+        data: sorted.map(([,v]) => Math.round(v)),
+        backgroundColor: sorted.map(([k]) => {
+          const code = Object.entries(GROUP_LABELS).find(([,v]) => v===k);
+          return code ? GROUP_COLORS[code[0]] : '#ccc';
+        }),
+        borderWidth: 2, borderColor: 'white'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.label + ': ₪' + fmt(ctx.raw) + ' (' + Math.round(ctx.raw/43725*100/100) + '%)'
+          }
+        }
+      }
+    }
+  });
+})();
+
+// ============================================================
+// CHART 7 — Not Started / Low Progress
+// ============================================================
+(function() {
+  const notStarted = BUDGET.filter(b => b.b > 20000 && b.a / Math.max(b.b, 1) < 0.20)
+    .sort((a,b) => b.b - a.b);
+
+  const ctx = document.getElementById('chart7').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: notStarted.map(i => i.r + ': ' + (i.d.length > 22 ? i.d.substr(0,22)+'…' : i.d)),
+      datasets: [
+        { label: 'תקציב', data: notStarted.map(i => i.b),
+          backgroundColor: 'rgba(52,152,219,0.4)', borderColor: '#2980b9', borderWidth: 1.5 },
+        { label: 'בוצע', data: notStarted.map(i => i.a),
+          backgroundColor: 'rgba(241,196,15,0.8)', borderColor: '#f39c12', borderWidth: 1.5 }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const item = notStarted[ctx.dataIndex];
+              const pct = item.b > 0 ? Math.round(item.a/item.b*100) : 0;
+              return ctx.dataset.label + ': ₪' + fmt(ctx.raw) + (ctx.datasetIndex===1 ? ' (' + pct + '%)' : '');
+            }
+          }
+        }
+      },
+      scales: { x: { ticks: { callback: v => fmtK(v) } } }
+    }
+  });
+})();
+
+// ============================================================
+// OVERRUN TABLE
+// ============================================================
+(function() {
+  const tbody = document.getElementById('overrun-tbody');
+  const sorted = [...BUDGET].filter(b => b.b > 100 || b.a > 100)
+    .sort((a,b) => {
+      const pctA = a.b > 0 ? a.a/a.b : (a.a > 0 ? 99 : 0);
+      const pctB = b.b > 0 ? b.a/b.b : (b.a > 0 ? 99 : 0);
+      return pctB - pctA;
+    });
+
+  sorted.forEach(item => {
+    const pct = item.b > 0 ? Math.round(item.a / item.b * 100) : (item.a > 0 ? 999 : 0);
+    const diff = item.a - item.b;
+    let status, badgeClass;
+    if (pct >= 150) { status = '🚨 חריגה קריטית'; badgeClass = 'badge-red'; }
+    else if (pct >= 101) { status = '⚠️ חריגה'; badgeClass = 'badge-orange'; }
+    else if (pct >= 80) { status = '✅ בתקציב'; badgeClass = 'badge-green'; }
+    else if (pct === 0) { status = '⏳ טרם התחיל'; badgeClass = 'badge-gray'; }
+    else { status = '💚 יתרה'; badgeClass = 'badge-blue'; }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${item.r}</strong></td>
+      <td>${item.d}</td>
+      <td style="text-align:left">₪${fmt(item.b)}</td>
+      <td style="text-align:left">₪${fmt(item.a)}</td>
+      <td style="text-align:left;color:${diff>0?'#c0392b':'#27ae60'};font-weight:600">
+        ${diff>0?'+':''}₪${fmt(diff)}
+      </td>
+      <td style="text-align:center">
+        <div style="margin-bottom:4px">${pct}%</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" style="width:${Math.min(pct,100)}%;background:${pct>100?'#e74c3c':pct>80?'#f39c12':'#27ae60'}"></div>
+        </div>
+      </td>
+      <td><span class="badge ${badgeClass}">${status}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+})();
+</script>
+</body>
+</html>
